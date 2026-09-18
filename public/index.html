@@ -2,27 +2,28 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>学生作业批改系统</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="header">
+  <header class="page-header">
     <h1>学生作业批改系统</h1>
     <p class="subtitle">上传高中物理作业图片，AI 自动校验并生成批改标注</p>
   </header>
 
   <main class="main">
-    <section class="upload-section">
-      <div id="drop-zone" class="drop-zone">
-        <p class="drop-text">拖拽图片到此处，或</p>
-        <label for="file-input" class="button button-secondary">选择图片</label>
-        <input type="file" id="file-input" multiple accept="image/png,image/jpeg" hidden>
-        <p class="hint">支持 png / jpeg，一次提交为一个批次</p>
-      </div>
+    <section class="upload-section" aria-label="上传作业图片">
+      <!-- 拖拽区整体为文件 input 的 label：点击按钮或区域任意处均可选文件 -->
+      <label id="drop-zone" class="drop-zone" for="file-input">
+        <span class="drop-text">拖拽图片到此处，或</span>
+        <span class="button button-secondary">选择图片</span>
+        <input type="file" id="file-input" class="file-input" name="images" multiple accept="image/png,image/jpeg">
+        <span class="drop-hint">支持 png / jpeg 格式，单张不超过 10MB，一次最多 20 张</span>
+      </label>
       <p id="selected-summary" class="selected-summary" hidden></p>
-      <p id="page-status" class="page-status" hidden></p>
-      <button id="upload-btn" class="button button-primary" disabled>上传并开始批改</button>
+      <p id="page-status" class="page-status" role="status" aria-live="polite" hidden></p>
+      <button id="upload-btn" class="button button-primary" type="button" disabled>上传并开始批改</button>
     </section>
 
     <section id="batch-section" class="batch-section" hidden>
@@ -31,24 +32,29 @@
     </section>
   </main>
 
+  <footer class="page-footer">
+    <p>批改结果由 AI 生成，仅供参考，请自行核对</p>
+  </footer>
+
   <!-- 非物理题警告模态框 -->
-  <div id="modal" class="modal hidden">
+  <div id="modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-message">
     <div class="modal-box">
-      <p class="modal-icon">⚠️</p>
+      <div class="modal-accent" aria-hidden="true"></div>
+      <h2 id="modal-title" class="modal-title">无法批改该图片</h2>
       <p id="modal-message" class="modal-message"></p>
-      <button id="modal-close" class="button button-primary">我知道了，重新上传</button>
+      <button id="modal-close" class="button button-primary" type="button">我知道了，重新上传</button>
     </div>
   </div>
 
   <!-- 结果图放大查看 -->
-  <div id="lightbox" class="modal hidden">
-    <div class="lightbox-box">
+  <div id="lightbox" class="modal lightbox hidden" role="dialog" aria-modal="true" aria-label="批改结果大图">
+    <figure class="lightbox-box">
       <img id="lightbox-img" class="lightbox-img" alt="批改结果大图">
-      <div class="lightbox-actions">
+      <figcaption class="lightbox-actions">
         <a id="lightbox-download" class="button button-secondary" download="批改结果.png">下载结果图</a>
-        <button id="lightbox-close" class="button button-secondary">关闭</button>
-      </div>
-    </div>
+      </figcaption>
+    </figure>
+    <button id="lightbox-close" class="lightbox-close" type="button" aria-label="关闭大图">×</button>
   </div>
 
   <script src="app.js"></script>

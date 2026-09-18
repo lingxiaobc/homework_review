@@ -39,6 +39,10 @@
   let pollErrorCount = 0;
   let uploadInFlight = false;
   const rejectionModalShown = new Set();
+  // 模态/灯箱打开时的焦点位置，关闭时归还（配合可达性焦点管理）
+  let modalReturnFocus = null;
+  let lightboxReturnFocus = null;
+  let lightboxReturnImageId = null;
 
   function showPageStatus(message) {
     els.pageStatus.textContent = message;
@@ -168,8 +172,20 @@
     img.className = 'card-thumb';
     img.alt = '作业图片';
     if (image.status === 'SUCCEEDED') {
+      // 仅结果图可放大：绑定点击/键盘激活与 cursor 类
       img.src = `api/images/${image.image_id}/result`;
-      img.addEventListener('click', () => openLightbox(image.image_id));
+      img.classList.add('is-clickable');
+      img.tabIndex = 0;
+      img.setAttribute('role', 'button');
+      img.setAttribute('aria-label', '放大查看批改结果');
+      const openResult = () => openLightbox(image.image_id);
+      img.addEventListener('click', openResult);
+      img.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openResult();
+        }
+      });
       img.title = '点击放大查看批改结果';
     } else {
       img.src = `api/images/${image.image_id}/raw`;
@@ -199,7 +215,8 @@
     actions.className = 'card-actions';
     if (image.status === 'FAILED') {
       const retryBtn = document.createElement('button');
-      retryBtn.className = 'button button-secondary';
+      retryBtn.type = 'button';
+      retryBtn.className = 'button button-danger';
       retryBtn.textContent = '重试';
       // 立即禁用防止双击重复提交；卡片随轮询重建会自然恢复
       retryBtn.addEventListener('click', () => {
@@ -241,7 +258,23 @@
 
   function showModal(message) {
     els.modalMessage.textContent = message;
-    els.modal.classList.remove('hidden');
+    if (els.modal.classList.contains('hidden')) {
+      modalReturnFocus = document.activeElement;
+      els.modal.classList.remove('hidden');
+    }
+    els.modalClose.focus();
+  }
+
+  function closeModal() {
+    els.modal.classList.add('hidden');
+    const trigger = modalReturnFocus;
+    modalReturnFocus = null;
+    if (trigger && trigger.isConnected) {
+      trigger.focus();
+      return;
+    }
+    // 轮询会重建卡片；原触发元素被移除时回落到上传按钮
+    els.uploadBtn.focus();
   }
 
   function openLightbox(imageId) {
@@ -249,16 +282,78 @@
     els.lightboxImg.src = url;
     els.lightboxDownload.href = url;
     els.lightboxDownload.download = `批改结果_${imageId.slice(0, 8)}.png`;
+    lightboxReturnFocus = document.activeElement;
+    lightboxReturnImageId = imageId;
     els.lightbox.classList.remove('hidden');
+    els.lightboxClose.focus();
   }
 
-  els.modalClose.addEventListener('click', () => {
-    els.modal.classList.add('hidden');
-  });
-
-  els.lightboxClose.addEventListener('click', () => {
+  function closeLightbox() {
     els.lightbox.classList.add('hidden');
     els.lightboxImg.src = '';
+    const trigger = lightboxReturnFocus;
+    const imageId = lightboxReturnImageId;
+    lightboxReturnFocus = null;
+    lightboxReturnImageId = null;
+    if (trigger && trigger.isConnected) {
+      trigger.focus();
+      return;
+    }
+    // 轮询会重建卡片；原触发元素被移除时回落到同图的新缩略图
+    const thumb = imageId
+      ? document.querySelector(`.card[data-image-id="${imageId}"] .card-thumb`)
+      : null;
+    if (thumb) thumb.focus();
+  }
+
+  els.modalClose.addEventListener('click', closeModal);
+
+  els.lightboxClose.addEventListener('click', closeLightbox);
+
+  // Esc 关闭最上层的模态/灯箱
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (!els.modal.classList.contains('hidden')) {
+      closeModal();
+    } else if (!els.lightbox.classList.contains('hidden')) {
+      closeLightbox();
+    }
+  });
+
+  // 对话框 Tab 焦点圈闭：在容器内可聚焦元素间循环（Shift+Tab 反向）
+  function trapTab(event, container) {
+    const focusables = container.querySelectorAll('button, a[href]');
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (!container.contains(document.activeElement)) {
+      // 焦点意外落在对话框外时先拉回，避免 Tab 逃逸到背景页面
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  els.modal.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') trapTab(event, els.modal);
+  });
+
+  els.lightbox.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') trapTab(event, els.lightbox);
+  });
+
+  // 点击遮罩空白处关闭
+  els.modal.addEventListener('click', (event) => {
+    if (event.target === els.modal) closeModal();
+  });
+
+  els.lightbox.addEventListener('click', (event) => {
+    if (event.target === els.lightbox) closeLightbox();
   });
 
   // ---- 拖拽与选择 ----
