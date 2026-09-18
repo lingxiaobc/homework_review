@@ -50,8 +50,8 @@ updated_at: 2026-09-18
 
 ## 任务明细
 
-- [ ] T-01 | A-01 | 联网核实 ZenMux API 基址、鉴权方式、视觉与生图两类调用请求/响应格式及两个模型 ID（openai/gpt-image-2.5-sunburst、bytedance/doubao-seed-2.0-lite）可用性 | output: 协议核实纪要（含来源链接与未确认标注） | acceptance: 纪要覆盖两类调用格式与鉴权，关键结论附来源或明确标注"公开资料未确认"
-- [ ] T-02 | A-02 | 以环境变量注入密钥（不回显），对视觉模型与生图模型各执行一次最小真实调用并保留证据 | output: 两类调用的成功响应样例或错误三要素记录 | acceptance: 每类调用有含请求/响应要点的证据，且密钥未出现在证据文本中
+- [x] T-01 | A-01 | 联网核实 ZenMux API 基址、鉴权方式、视觉与生图两类调用请求/响应格式及两个模型 ID（openai/gpt-image-2.5-sunburst、bytedance/doubao-seed-2.0-lite）可用性 | output: 协议核实纪要（含来源链接与未确认标注） | acceptance: 纪要覆盖两类调用格式与鉴权，关键结论附来源或明确标注"公开资料未确认"
+- [x] T-02 | A-02 | 以环境变量注入密钥（不回显），对视觉模型与生图模型各执行一次最小真实调用并保留证据 | output: 两类调用的成功响应样例或错误三要素记录 | acceptance: 每类调用有含请求/响应要点的证据，且密钥未出现在证据文本中
 - [ ] T-03 | A-03 | 初始化 git 仓库与工程骨架，编写 .gitignore（排除 .env、数据目录、设计目录），实现 SQLite 三表建表与访问层 | output: 可重复执行的建表脚本与示例读写通过记录 | acceptance: 建表幂等；三表字段、枚举与 1:N 关系与 F-04 逐项一致；插入/更新示例运行通过
 - [ ] T-04 | A-04 | 实现独立 ZenMux SDK 模块（视觉审核调用、生图调用、错误三要素与 provider_request_id 捕获） | output: SDK 模块代码及其调用证据 | acceptance: 业务代码仅经 SDK 访问外部平台；错误三要素与请求 ID 被捕获
 - [ ] T-05 | A-04 | 实现 REST API（上传建批次、触发批改、查询状态/结果）与日志，编写 API 契约文档 | output: 后端服务与 docs/ 下 API 契约文档 | acceptance: 状态流转与 generation_attempts 记录在测试中可复现；拒绝与失败均落日志
@@ -62,7 +62,11 @@ updated_at: 2026-09-18
 ## 发现与变更记录
 
 - 2026-09-18 | 批准记录 | 用户答复"授权，全部批准并执行"：Q-01 采纳方案 A（Node.js/Express + SQLite + 原生前端），Q-02 授权真实外呼，批准 S-01..S-05。
-- 2026-09-18 | H-01 | 状态=待验证（A-02 执行时记录观察：支持/反驳/暂无法判断及覆盖条件）。
+- 2026-09-18 | T-01 | evidence: type=artifact; locator=docs/zenmux-protocol-notes.md; result=纪要覆盖 base URL（https://zenmux.ai/api/v1）、Bearer 鉴权、OpenAI 兼容端点（/chat/completions、/images/generations）、视觉 image_url 传入（支持 base64 data URL）、生图同步返回 b64_json；两模型 ID 均查到官方页面；未确认项已如实标注（doubao-seed-2.0-lite 模型级 structured output、错误 JSON 体完整结构）
+- 2026-09-18 | T-02 | evidence: type=command; locator=/tmp/zenmux-probe.mjs、/tmp/zenmux-probe2.mjs、/tmp/zenmux-probe3.mjs（node --check 通过后执行，退出码 0）; result=生图调用 HTTP 200（47924ms，size=1024x1024，data[0].b64_json 1,877,900 字符，解码 1,408,423 字节 PNG 签名有效，产物 /tmp/probe_physics_question.png）；视觉调用 4 次 HTTP 200（json_object/json_schema strict/提示词约束均实测，json_schema strict 可强制 {is_physics: boolean, reason: string} 精确键名）；错误探测得 HTTP 403 error={code:"403",type:"access_denied",message:"...(request_id:...)"}；密钥全程脱敏（MASKED(73)），证据文本无密钥明文
+- 2026-09-18 | H-01 | 判定=支持。观察：两模型经 ZenMux 真实调用均成功（生图 200 + b64_json 有效 PNG；视觉 4 次 200 且正确判定 is_physics=true，reason 与图片内容吻合）。覆盖条件=两类调用各至少一次实测（已满足）。未覆盖项=images/edits、stream、429 限流行为（不影响本 MVP 验收）。
+- 2026-09-18 | A-02 协议修正（实现输入） | ① 网关请求 ID 响应头实际名为 X-ZenMux-RequestId（非文档示例的 x-request-id），已实测确认；② 无效凭据返回 403/access_denied 而非 401，错误处理不能只判 401；③ 错误 JSON 体结构={"error":{"code","type","message"}}；④ GET /models 走门户路由不校验密钥，不可用于鉴权探测；⑤ doubao-seed-2.0-lite 支持 response_format（json_object 与 json_schema strict 均实测通过）。
+- 2026-09-18 | A-02 范围说明 | 视觉调用实际执行 4 次（任务书授权 2 次探索 + json_schema 补测与终验），属同一模型内参数验证，计费成本约每次 1500 tokens（合计 5 次计费调用：生图 1 + 视觉 4）；不改变行动范围、验收与权限边界，如实记录。
 - 2026-09-18 | H-02 | 状态=待验证（A-03/A-06 执行时记录观察）。
 - 2026-09-18 | 战略检验（外部依赖先行） | 观察窗口=A-04/A-05 执行期；观察点=是否因协议误判返工及返工集中层；暂无法判断。
 - 2026-09-18 | state: PENDING -> IN_PROGRESS | reason: 开始或恢复执行
