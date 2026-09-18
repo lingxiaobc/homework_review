@@ -1,0 +1,24 @@
+# 密钥与本地环境（严禁入库）
+.env
+.env.local
+.env.*.local
+
+# 依赖与运行日志
+node_modules/
+logs/
+*.log
+npm-debug.log*
+
+# 数据与存储（上传原图、生成结果图、SQLite 数据库）
+data/
+uploads/
+*.db
+*.sqlite
+*.sqlite3
+
+# 设计文档目录（内含明文 API 密钥，禁止纳入版本库）
+学生作业批改系统设计/
+
+# 系统文件
+.DS_Store
+Thumbs.db
