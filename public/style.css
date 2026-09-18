@@ -23,7 +23,7 @@
   --danger: #b42318;
   --danger-surface: #fbeeec;
   --danger-tint: rgba(180, 35, 24, 0.08);
-  --waiting: #9a6700;
+  --waiting: #8a5c00;
   --waiting-surface: #fdf3dd;
   --success: #2e7d43;
   --overlay: rgba(36, 38, 31, 0.4);
@@ -382,11 +382,14 @@ body {
   color: var(--accent);
 }
 
-/* GENERATING：琥珀 + 呼吸 */
+/* GENERATING：琥珀，仅圆点呼吸（文字与描边保持静态） */
 .badge-GENERATING {
   border-color: var(--waiting);
   background: var(--waiting-surface);
   color: var(--waiting);
+}
+
+.badge-GENERATING::before {
   animation: badge-breathing 2s ease-in-out infinite;
 }
 
@@ -604,8 +607,8 @@ body {
     transform: none;
   }
 
-  /* 生成中改为静态徽标，不闪烁 */
-  .badge-GENERATING {
+  /* 生成中圆点改为静态，不闪烁 */
+  .badge-GENERATING::before {
     animation: none;
   }
 }

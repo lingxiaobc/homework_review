@@ -269,9 +269,12 @@
     els.modal.classList.add('hidden');
     const trigger = modalReturnFocus;
     modalReturnFocus = null;
-    if (trigger && typeof trigger.focus === 'function') {
+    if (trigger && trigger.isConnected) {
       trigger.focus();
+      return;
     }
+    // 轮询会重建卡片；原触发元素被移除时回落到上传按钮
+    els.uploadBtn.focus();
   }
 
   function openLightbox(imageId) {
@@ -315,6 +318,33 @@
     } else if (!els.lightbox.classList.contains('hidden')) {
       closeLightbox();
     }
+  });
+
+  // 对话框 Tab 焦点圈闭：在容器内可聚焦元素间循环（Shift+Tab 反向）
+  function trapTab(event, container) {
+    const focusables = container.querySelectorAll('button, a[href]');
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (!container.contains(document.activeElement)) {
+      // 焦点意外落在对话框外时先拉回，避免 Tab 逃逸到背景页面
+      event.preventDefault();
+      first.focus();
+    } else if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  els.modal.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') trapTab(event, els.modal);
+  });
+
+  els.lightbox.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') trapTab(event, els.lightbox);
   });
 
   // 点击遮罩空白处关闭
