@@ -69,3 +69,19 @@ ZenMux 是 OpenAI 兼容的大模型聚合网关，官网 https://zenmux.ai，AP
 4. **请求 ID 响应头修正：网关端点实际头名为 `X-ZenMux-RequestId`**（成功与失败响应均携带；文档示例中的 x-request-id 名称不准确）。`provider_request_id` 应取此头。
 5. GET /models 走门户路由（不校验密钥、request-id 为数字串格式），不可用于鉴权探测。
 6. 视觉链路闭环验证：生图模型生成的物理题图片 → 视觉模型正确判定 is_physics=true 且 reason 与图片内容吻合。
+
+## /images/edits 实测记录（2026-09-18，真实调用确认，实现以此为准）
+
+1. **端点与请求格式：`POST https://zenmux.ai/api/v1/images/edits`，multipart/form-data。**
+   Node 18+ 全局 `FormData` + `Blob` 直接透传给 `fetch` 即可（**不手动设 Content-Type**，由 fetch
+   自动生成 boundary）。实测字段：`model`、`prompt`、`image`（文件字段：`new Blob([buffer], {type: mime})`
+   并携带文件名）、`size`、`input_fidelity`。
+2. **`input_fidelity=high` 实测被接受**（HTTP 200）；其相对默认档的实际效果未做 A/B 验证，实现按固定 `high` 传。
+3. **size 仅三档：`1536x1024`（横）/ `1024x1024`（方）/ `1024x1536`（竖）。**
+   `size=1536x1024` 实测被接受且输出图同尺寸；实现按原图像素探测（PNG IHDR / JPEG SOF，零依赖）
+   映射三档，探测失败回退 `1024x1024`。
+4. **响应结构与 generations 一致：`data[0].b64_json`**；响应顶层新增 `usage` 字段，可忽略。
+5. **实测耗时约 81.9s**，现有 180s 生图超时（`config.zenmux.imageTimeoutMs`，保持不变）充足。
+6. **请求 ID 响应头与 generations 一致：`X-ZenMux-RequestId`**（成功响应携带，取法不变）。
+7. **错误行为与 generations 一致**：错误体 `{"error":{"code","type","message"}}`、无效凭据 403
+   access_denied、request_id 内嵌于 message 文本，`/images/edits` 路径同规则适用。

@@ -146,7 +146,14 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
 
     const startedAtMs = Date.now();
     try {
-      const { b64_json, requestId } = await sdk.image.generateImage(gradingPrompt);
+      // /images/edits 需携带学生作业原图（存储中的原图文件）
+      const image = getImageOrThrow(imageId);
+      const originalImage = {
+        buffer: storage.readRaw(image.raw_image_key),
+        mimeType: extToMime(image.raw_image_key),
+        fileName: image.raw_image_key.split('/').pop(),
+      };
+      const { b64_json, requestId } = await sdk.image.generateImage(gradingPrompt, originalImage);
       const resultKey = storage.saveResultImage(imageId, Buffer.from(b64_json, 'base64'));
       const latencyMs = Date.now() - startedAtMs;
       stmts.completeAttempt.run(nowIso(), latencyMs, requestId ?? null, attemptId);

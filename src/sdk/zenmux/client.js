@@ -7,7 +7,9 @@
 // - 无效凭据返回 403 access_denied（而非 401），错误体为
 //   {"error":{"code","type","message"}}，request_id 内嵌于 message 文本；
 // - 请求 ID 响应头实际名为 X-ZenMux-RequestId（成功与失败响应均携带），
-//   用 fetch Headers.get 大小写不敏感特性获取。
+//   用 fetch Headers.get 大小写不敏感特性获取；
+// - body 为 FormData 实例时走 multipart（/images/edits），不得手动设 Content-Type
+//   与 JSON.stringify —— 由 fetch 自动生成 boundary。
 
 class ZenMuxError extends Error {
   constructor({ code, type, message, requestId = null }) {
@@ -31,6 +33,10 @@ function createZenMuxClient({ baseUrl, apiKey, defaultTimeoutMs = 60 * 1000 }) {
       });
     }
 
+    // FormData（multipart 上传）交给 fetch 自动设置 Content-Type 与 boundary；
+    // 其余走既有 JSON 路径，行为不变。
+    const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
+
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     let res;
@@ -39,9 +45,9 @@ function createZenMuxClient({ baseUrl, apiKey, defaultTimeoutMs = 60 * 1000 }) {
         method,
         headers: {
           Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         },
-        body: body === undefined ? undefined : JSON.stringify(body),
+        body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
         signal: controller.signal,
       });
     } catch (err) {
