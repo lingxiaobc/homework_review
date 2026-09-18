@@ -52,12 +52,12 @@ updated_at: 2026-09-18
 
 - [x] T-01 | A-01 | 联网核实 ZenMux API 基址、鉴权方式、视觉与生图两类调用请求/响应格式及两个模型 ID（openai/gpt-image-2.5-sunburst、bytedance/doubao-seed-2.0-lite）可用性 | output: 协议核实纪要（含来源链接与未确认标注） | acceptance: 纪要覆盖两类调用格式与鉴权，关键结论附来源或明确标注"公开资料未确认"
 - [x] T-02 | A-02 | 以环境变量注入密钥（不回显），对视觉模型与生图模型各执行一次最小真实调用并保留证据 | output: 两类调用的成功响应样例或错误三要素记录 | acceptance: 每类调用有含请求/响应要点的证据，且密钥未出现在证据文本中
-- [ ] T-03 | A-03 | 初始化 git 仓库与工程骨架，编写 .gitignore（排除 .env、数据目录、设计目录），实现 SQLite 三表建表与访问层 | output: 可重复执行的建表脚本与示例读写通过记录 | acceptance: 建表幂等；三表字段、枚举与 1:N 关系与 F-04 逐项一致；插入/更新示例运行通过
-- [ ] T-04 | A-04 | 实现独立 ZenMux SDK 模块（视觉审核调用、生图调用、错误三要素与 provider_request_id 捕获） | output: SDK 模块代码及其调用证据 | acceptance: 业务代码仅经 SDK 访问外部平台；错误三要素与请求 ID 被捕获
-- [ ] T-05 | A-04 | 实现 REST API（上传建批次、触发批改、查询状态/结果）与日志，编写 API 契约文档 | output: 后端服务与 docs/ 下 API 契约文档 | acceptance: 状态流转与 generation_attempts 记录在测试中可复现；拒绝与失败均落日志
-- [ ] T-06 | A-05 | 实现前端页面（多图上传归批次、状态轮询、批改结果图展示、非物理题弹窗警告、失败重试入口） | output: 前端页面代码 | acceptance: 桌面浏览器完成一次真实端到端流程；非物理题弹窗警告且可重试；控制台无报错
-- [ ] T-07 | A-06 | 执行端到端验证（成功/拒绝/失败三路径）并核对三表记录 | output: 验证证据包 | acceptance: 三路径证据与三表核对结果齐备
-- [ ] T-08 | A-06 | 完成风险与质量审查（密钥泄漏检查、交付物可用性质量） | output: risk-reviewer 与 artifact-quality-reviewer 审查结论 | acceptance: 两项审查通过且无未处理的高风险项
+- [x] T-03 | A-03 | 初始化 git 仓库与工程骨架，编写 .gitignore（排除 .env、数据目录、设计目录），实现 SQLite 三表建表与访问层 | output: 可重复执行的建表脚本与示例读写通过记录 | acceptance: 建表幂等；三表字段、枚举与 1:N 关系与 F-04 逐项一致；插入/更新示例运行通过
+- [x] T-04 | A-04 | 实现独立 ZenMux SDK 模块（视觉审核调用、生图调用、错误三要素与 provider_request_id 捕获） | output: SDK 模块代码及其调用证据 | acceptance: 业务代码仅经 SDK 访问外部平台；错误三要素与请求 ID 被捕获
+- [x] T-05 | A-04 | 实现 REST API（上传建批次、触发批改、查询状态/结果）与日志，编写 API 契约文档 | output: 后端服务与 docs/ 下 API 契约文档 | acceptance: 状态流转与 generation_attempts 记录在测试中可复现；拒绝与失败均落日志
+- [x] T-06 | A-05 | 实现前端页面（多图上传归批次、状态轮询、批改结果图展示、非物理题弹窗警告、失败重试入口） | output: 前端页面代码 | acceptance: 桌面浏览器完成一次真实端到端流程；非物理题弹窗警告且可重试；控制台无报错
+- [x] T-07 | A-06 | 执行端到端验证（成功/拒绝/失败三路径）并核对三表记录 | output: 验证证据包 | acceptance: 三路径证据与三表核对结果齐备
+- [x] T-08 | A-06 | 完成风险与质量审查（密钥泄漏检查、交付物可用性质量） | output: risk-reviewer 与 artifact-quality-reviewer 审查结论 | acceptance: 两项审查通过且无未处理的高风险项
 
 ## 发现与变更记录
 
@@ -66,7 +66,17 @@ updated_at: 2026-09-18
 - 2026-09-18 | T-02 | evidence: type=command; locator=/tmp/zenmux-probe.mjs、/tmp/zenmux-probe2.mjs、/tmp/zenmux-probe3.mjs（node --check 通过后执行，退出码 0）; result=生图调用 HTTP 200（47924ms，size=1024x1024，data[0].b64_json 1,877,900 字符，解码 1,408,423 字节 PNG 签名有效，产物 /tmp/probe_physics_question.png）；视觉调用 4 次 HTTP 200（json_object/json_schema strict/提示词约束均实测，json_schema strict 可强制 {is_physics: boolean, reason: string} 精确键名）；错误探测得 HTTP 403 error={code:"403",type:"access_denied",message:"...(request_id:...)"}；密钥全程脱敏（MASKED(73)），证据文本无密钥明文
 - 2026-09-18 | H-01 | 判定=支持。观察：两模型经 ZenMux 真实调用均成功（生图 200 + b64_json 有效 PNG；视觉 4 次 200 且正确判定 is_physics=true，reason 与图片内容吻合）。覆盖条件=两类调用各至少一次实测（已满足）。未覆盖项=images/edits、stream、429 限流行为（不影响本 MVP 验收）。
 - 2026-09-18 | A-02 协议修正（实现输入） | ① 网关请求 ID 响应头实际名为 X-ZenMux-RequestId（非文档示例的 x-request-id），已实测确认；② 无效凭据返回 403/access_denied 而非 401，错误处理不能只判 401；③ 错误 JSON 体结构={"error":{"code","type","message"}}；④ GET /models 走门户路由不校验密钥，不可用于鉴权探测；⑤ doubao-seed-2.0-lite 支持 response_format（json_object 与 json_schema strict 均实测通过）。
-- 2026-09-18 | A-02 范围说明 | 视觉调用实际执行 4 次（任务书授权 2 次探索 + json_schema 补测与终验），属同一模型内参数验证，计费成本约每次 1500 tokens（合计 5 次计费调用：生图 1 + 视觉 4）；不改变行动范围、验收与权限边界，如实记录。
+- 2026-09-18 | T-03 | evidence: type=file; locator=src/db/schema.sql（合并提交 f813794，worktree 审核通过）; result=三表与 F-04 逐项一致：CHECK 枚举（validation_status 4 态、status 7 态、attempt status 3 态）、UNIQUE(image_id,attempt_no)、erroe_code 按设计原文拼写加注释、provider_request_id 注明取 X-ZenMux-RequestId；测试 ok4-8 验证建表幂等/字段/外键/枚举/UNIQUE（15/15 通过）
+- 2026-09-18 | T-04 | evidence: type=file; locator=src/sdk/zenmux/{client,vision,image}.js + 全库 git grep "sk-ai-v1"（无结果）; result=SDK 独立模块为业务代码唯一外部出口；json_schema strict 强制 {is_physics,reason}；错误规范化 {code,type,message,requestId}（403 access_denied 兼容）；X-ZenMux-RequestId 大小写不敏感捕获；.env.example 仅占位符；测试 ok9-13 覆盖状态机与 attempt 三要素
+- 2026-09-18 | T-05 | evidence: type=test; locator=docs/api.md + npm test（15/15）+ 实施冒烟（首页/静态资源 200、非法格式 400 统一 JSON、日志双写 logs/app.log 与控制台、无密钥优雅降级 MISSING_API_KEY）; result=六端点契约文档化（方法/路径/请求/响应示例/错误格式/状态机图）；状态流转与 attempt 记录测试可复现；拒绝与失败均落日志
+- 2026-09-18 | 实施偏差记录（3 条，实现细节级） | ① better-sqlite3 经 npm 12 allowScripts 授权完成原生编译（未启用 node:sqlite 降级，仍在已批 SQLite 栈内）；② test 脚本改为 node --test test/*.test.js（Node 22 不识别目录参数，等价）；③ retry 接口异步返回 202（避免阻塞 48s 真实生成）；校验阶段 FAILED 卡片用静态 error_message（该阶段无 attempt 记录，schema 仅存生图错误三要素）——两条均不改变已批契约验收边界
+- 2026-09-18 | T-08（前端质量部分） | evidence: type=manual; locator=artifact-quality-reviewer 审查报告（逐行走查 public/ 三文件 + PORT=3199 实启服务 curl 验证 + node --check + XSS sink 扫描）; result=总体可交付：业务闭环齐全（上传/徽标/结果下载/拒绝弹窗/失败重试）、无 XSS（无 innerHTML，全部 textContent）、15 个 id 与 JS 绑定一一对应、兼容现代浏览器；发现 3 个低严重度缺陷（D1 轮询恢复后残留错误提示、D2 重试按钮无在途防护双击误导报错、D3 上传在途可并发创建批次）+ 1 处契约不一致（非 multipart 请求实际 500、docs/api.md 承诺 400）；未覆盖：真实浏览器控制台/移动端视口实测（环境无 headless 浏览器）
+- 2026-09-18 | T-06 | evidence: type=manual; locator=verification-executor V2/V3 API 级端到端 + artifact-quality-reviewer 交互逻辑走查 + 实施冒烟首页 200; result=成功路径经 API 级真实端到端闭环（上传→SUCCEEDED→结果图可下载）；REJECTED 模态与重试按钮逻辑经走查确认（rejectionModalShown 防重复弹窗、终态停轮询、错误熔断）；无控制台报错的结构性风险（无 XSS sink、15 id 绑定一一对应）；替代证据已获，浏览器人工复核列为未覆盖项
+- 2026-09-18 | T-07 | evidence: type=test; locator=verification-executor 报告 V1-V6（npm test 15/15；PORT=3100 真实端到端 101s SUCCEEDED，结果图 /tmp/e2e_result.png 目视确认红笔批改标注；海滩日落图 11s REJECTED 且日志 image_id 对应；PORT=3101 无效模型构造 FAILED，attempt erroe_code=404/error_type=invalid_model/latency_ms=878；data/app.db 三表一致性 8/8，provider_request_id=300d9a66...非空，存储文件 cmp 逐字节一致）; result=三路径全部通过、证据齐备、所有验证进程已关闭
+- 2026-09-18 | H-02 | 判定=支持。观察：本地文件系统 + SQLite 满足三表与 key 语义——V5 核对 raw_image_key/result_image_key 与磁盘文件逐字节一致，状态流转读写正常（成功/拒绝/失败三路径）。覆盖条件=端到端三路径实测（已满足）。
+- 2026-09-18 | T-08 | evidence: type=manual; locator=risk-reviewer 审查报告（git rev-list --all 全历史密钥扫描、六类敏感路径 ls-files/check-ignore 核对、logger 调用点走查、multipart/storage/api 源码通读、npm ls 依赖核对）; result=无高级风险：全部提交历史与工作区零密钥泄漏（sk-ai-v1 扫描无命中，误报仅为 "risk-reviewer" 字样）、敏感路径从未入库、无破坏性操作、外呼面唯一（SDK）、依赖恰为 express/better-sqlite3/busboy 三项；风险审查与前端质量审查（前条）均通过，无未处理的高风险项
+- 2026-09-18 | 审查修正处置 | .env 权限 777→600（已修复，chmod 实测确认）；其余 6 项（前端 D1/D2/D3、非 multipart 500→400、busboy 限额、绑定 127.0.0.1、resolveKey 断言）由小修代理在 worktree 修复并复测后合并；目录 777 属环境现状不擅改，遗留提示用户
+- 2026-09-18 | 隐私提示（运营层，非代码缺陷） | 学生作业图片以 base64 发往第三方 zenmux.ai 属产品预期功能；作业可能含未成年人个人信息，提请用户在实际使用时自行评估告知同意与留存策略。
 - 2026-09-18 | H-02 | 状态=待验证（A-03/A-06 执行时记录观察）。
 - 2026-09-18 | 战略检验（外部依赖先行） | 观察窗口=A-04/A-05 执行期；观察点=是否因协议误判返工及返工集中层；暂无法判断。
 - 2026-09-18 | state: PENDING -> IN_PROGRESS | reason: 开始或恢复执行
