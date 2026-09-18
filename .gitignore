@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.*.local
+.claude/
 
 # 依赖与运行日志
 node_modules/
