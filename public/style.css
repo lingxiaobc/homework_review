@@ -1,0 +1,266 @@
+:root {
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --text: #1f2933;
+  --text-weak: #6b7785;
+  --border: #dde3ea;
+  --primary: #2563eb;
+  --primary-dark: #1e4fd6;
+  --radius: 10px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.header {
+  text-align: center;
+  padding: 32px 16px 8px;
+}
+
+.header h1 {
+  margin: 0 0 8px;
+  font-size: 26px;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--text-weak);
+  font-size: 14px;
+}
+
+.main {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 16px 16px 48px;
+}
+
+.upload-section {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.drop-zone {
+  background: var(--card);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 36px 16px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.drop-zone.dragover {
+  border-color: var(--primary);
+  background: #eef4ff;
+}
+
+.drop-text {
+  margin: 0 0 12px;
+  color: var(--text-weak);
+}
+
+.hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: var(--text-weak);
+}
+
+.selected-summary {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--text-weak);
+}
+
+.page-status {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #b42318;
+}
+
+.button {
+  display: inline-block;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 22px;
+  font-size: 14px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+
+.button-primary {
+  background: var(--primary);
+  color: #fff;
+  margin-top: 16px;
+}
+
+.button-primary:hover:not(:disabled) {
+  background: var(--primary-dark);
+}
+
+.button-primary:disabled {
+  background: #a9c0ef;
+  cursor: not-allowed;
+}
+
+.button-secondary {
+  background: #e8edf3;
+  color: var(--text);
+}
+
+.button-secondary:hover {
+  background: #d8e0ea;
+}
+
+.batch-section {
+  margin-top: 32px;
+}
+
+.batch-title {
+  font-size: 18px;
+  margin: 0 0 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card-thumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #eef1f5;
+  cursor: pointer;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.card-id {
+  font-size: 12px;
+  color: var(--text-weak);
+  font-family: ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex-shrink: 0;
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: #fff;
+}
+
+.badge-UPLOADED   { background: #8a94a6; }
+.badge-VALIDATING { background: #2563eb; }
+.badge-READY      { background: #0e9384; }
+.badge-GENERATING { background: #2563eb; animation: pulse 1.2s ease-in-out infinite; }
+.badge-SUCCEEDED  { background: #12805c; }
+.badge-FAILED     { background: #d92d20; }
+.badge-REJECTED   { background: #dc6803; }
+
+@keyframes pulse {
+  50% { opacity: 0.55; }
+}
+
+.card-error {
+  margin: 0;
+  font-size: 12px;
+  color: #b42318;
+  word-break: break-all;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.card-actions .button {
+  flex: 1;
+  padding: 8px 0;
+  font-size: 13px;
+  text-align: center;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-box {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+}
+
+.modal-icon {
+  margin: 0 0 8px;
+  font-size: 34px;
+}
+
+.modal-message {
+  margin: 0 0 20px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.lightbox-box {
+  max-width: min(860px, 94vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.lightbox-img {
+  width: 100%;
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.lightbox-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.lightbox-actions .button {
+  margin-top: 0;
+}
