@@ -29,6 +29,11 @@ function makeLogger(logFile) {
   return createLogger({ logFile, enableConsole: false });
 }
 
+// 构造 HTTP Basic Authorization 头（用户名任意，服务端只校验密码段）
+function basicAuthHeader(user, password) {
+  return `Basic ${Buffer.from(`${user}:${password}`, 'utf8').toString('base64')}`;
+}
+
 // fake sdk：不真调外部 API，以依赖注入方式传入 gradingService。
 // 可通过 sdk.state 在测试中途切换成功/失败行为。
 function createFakeSdk(options = {}) {
@@ -85,6 +90,7 @@ module.exports = {
   tinyPngBuffer,
   makeTempDir,
   makeLogger,
+  basicAuthHeader,
   makeServiceEnv,
   createFakeSdk,
   sleep,

@@ -84,7 +84,7 @@
     }
 
     try {
-      const res = await fetch('/api/batches', { method: 'POST', body: formData });
+      const res = await fetch('api/batches', { method: 'POST', body: formData });
       const body = await res.json();
       if (!res.ok) {
         throw new Error((body.error && body.error.message) || `上传失败（HTTP ${res.status}）`);
@@ -125,7 +125,7 @@
   async function poll() {
     if (!batchId) return;
     try {
-      const res = await fetch(`/api/batches/${batchId}`);
+      const res = await fetch(`api/batches/${batchId}`);
       const body = await res.json();
       if (!res.ok) {
         throw new Error((body.error && body.error.message) || `查询批次失败（HTTP ${res.status}）`);
@@ -168,11 +168,11 @@
     img.className = 'card-thumb';
     img.alt = '作业图片';
     if (image.status === 'SUCCEEDED') {
-      img.src = `/api/images/${image.image_id}/result`;
+      img.src = `api/images/${image.image_id}/result`;
       img.addEventListener('click', () => openLightbox(image.image_id));
       img.title = '点击放大查看批改结果';
     } else {
-      img.src = `/api/images/${image.image_id}/raw`;
+      img.src = `api/images/${image.image_id}/raw`;
     }
     card.appendChild(img);
 
@@ -212,7 +212,7 @@
       const downloadLink = document.createElement('a');
       downloadLink.className = 'button button-secondary';
       downloadLink.textContent = '下载';
-      downloadLink.href = `/api/images/${image.image_id}/result`;
+      downloadLink.href = `api/images/${image.image_id}/result`;
       downloadLink.download = `批改结果_${image.image_id.slice(0, 8)}.png`;
       actions.appendChild(downloadLink);
     }
@@ -226,7 +226,7 @@
   async function retryImage(imageId) {
     clearPageStatus();
     try {
-      const res = await fetch(`/api/images/${imageId}/retry`, { method: 'POST' });
+      const res = await fetch(`api/images/${imageId}/retry`, { method: 'POST' });
       const body = await res.json();
       if (!res.ok) {
         throw new Error((body.error && body.error.message) || `重试失败（HTTP ${res.status}）`);
@@ -245,7 +245,7 @@
   }
 
   function openLightbox(imageId) {
-    const url = `/api/images/${imageId}/result`;
+    const url = `api/images/${imageId}/result`;
     els.lightboxImg.src = url;
     els.lightboxDownload.href = url;
     els.lightboxDownload.download = `批改结果_${imageId.slice(0, 8)}.png`;

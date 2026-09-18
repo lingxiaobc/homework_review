@@ -1,9 +1,27 @@
 'use strict';
 
+const crypto = require('crypto');
 const express = require('express');
 const { createApiRouter, errorBody } = require('./routes/api');
 const { createGradingService } = require('./services/gradingService');
 const { GRADING_PROMPT, PROMPT_VERSION } = require('./prompts/imagePrompt');
+
+// 解析 Authorization: Basic base64(用户名:密码)；格式不合法返回 null
+function parseBasicCredentials(header) {
+  if (typeof header !== 'string' || !header.startsWith('Basic ')) return null;
+  const decoded = Buffer.from(header.slice('Basic '.length).trim(), 'base64').toString('utf8');
+  const separator = decoded.indexOf(':');
+  if (separator === -1) return null;
+  return { user: decoded.slice(0, separator), password: decoded.slice(separator + 1) };
+}
+
+// 仅比较密码段（用户名不限制）；长度不等直接拒绝，长度检查同时避免 timingSafeEqual 因长度不同抛错
+function passwordEquals(provided, expected) {
+  const providedBuf = Buffer.from(provided, 'utf8');
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  if (providedBuf.length !== expectedBuf.length) return false;
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
 
 // 组装 Express 应用。db / storage / sdk / logger 均可注入，便于测试替换为 fake 实现。
 function createApp({ config, db, storage, sdk, logger }) {
@@ -18,6 +36,19 @@ function createApp({ config, db, storage, sdk, logger }) {
 
   const app = express();
   app.disable('x-powered-by');
+
+  // 访问口令校验：配置 accessPassword 时，静态资源与全部 /api 请求均要求 HTTP Basic；
+  // 未配置则放行（本地/测试模式）。位于静态资源与全部 /api 路由之前。
+  if (config.accessPassword) {
+    app.use((req, res, next) => {
+      const credentials = parseBasicCredentials(req.headers.authorization);
+      if (!credentials || !passwordEquals(credentials.password, config.accessPassword)) {
+        res.setHeader('WWW-Authenticate', 'Basic realm="homework-grading"');
+        return res.status(401).json(errorBody('UNAUTHORIZED', '访问口令错误'));
+      }
+      return next();
+    });
+  }
 
   app.use('/api', createApiRouter({ service, storage }));
   app.use(express.static(config.publicDir));

@@ -2,13 +2,15 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
 const path = require('path');
 const { createApp } = require('../src/app');
-const { createFakeSdk, makeServiceEnv, tinyPngBuffer, sleep } = require('./helpers');
+const { basicAuthHeader, createFakeSdk, makeServiceEnv, tinyPngBuffer, sleep } = require('./helpers');
 
-async function startServer(env, sdk) {
+// extraConfig 可注入 accessPassword 等字段；不传则与原行为一致（不启用访问口令校验）
+async function startServer(env, sdk, extraConfig = {}) {
   const { app } = createApp({
-    config: { publicDir: path.join(env.dir, 'public') },
+    config: { publicDir: path.join(env.dir, 'public'), ...extraConfig },
     db: env.db,
     storage: env.storage,
     sdk,
@@ -176,4 +178,39 @@ test('API 重试链路：FAILED 图片经 retry 接口恢复至 SUCCEEDED', asyn
   const detail = await (await fetch(`${base}/api/images/${first.image_id}`)).json();
   assert.equal(detail.latest_attempt.attempt_no, 2);
   assert.equal(detail.latest_attempt.status, 'SUCCEEDED');
+});
+
+test('访问口令校验：配置 accessPassword 后全部请求要求 HTTP Basic', async () => {
+  const sdk = createFakeSdk();
+  const env = makeServiceEnv(sdk, 'apiauth');
+  // 测试服务的静态目录（makeServiceEnv 不含 public/），补一个首页文件供 ③ 校验 200
+  fs.mkdirSync(path.join(env.dir, 'public'));
+  fs.writeFileSync(path.join(env.dir, 'public', 'index.html'), '<!DOCTYPE html><html><body>ok</body></html>');
+  const { server, base } = await startServer(env, sdk, { accessPassword: 'test-pass-123' });
+  test.after(() => server.close());
+
+  // ① 无凭据请求 / → 401 且响应头含 WWW-Authenticate，错误体为统一 JSON
+  let res = await fetch(`${base}/`);
+  assert.equal(res.status, 401);
+  assert.equal(res.headers.get('www-authenticate'), 'Basic realm="homework-grading"');
+  const body = await res.json();
+  assert.equal(body.error.code, 'UNAUTHORIZED');
+  assert.equal(body.error.message, '访问口令错误');
+
+  // API 路由同样受保护
+  res = await fetch(`${base}/api/batches/no-such-batch`);
+  assert.equal(res.status, 401);
+  assert.equal(res.headers.get('www-authenticate'), 'Basic realm="homework-grading"');
+
+  // ② 错误密码 → 401（用户名不限）
+  res = await fetch(`${base}/`, { headers: { authorization: basicAuthHeader('any', 'wrong-pass') } });
+  assert.equal(res.status, 401);
+
+  // 长度不等或格式不合法的凭据同样拒绝
+  res = await fetch(`${base}/`, { headers: { authorization: 'Basic not-base64!!!' } });
+  assert.equal(res.status, 401);
+
+  // ③ 正确凭据（用户名任意）→ 200
+  res = await fetch(`${base}/`, { headers: { authorization: basicAuthHeader('any', 'test-pass-123') } });
+  assert.equal(res.status, 200);
 });

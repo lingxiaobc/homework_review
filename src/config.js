@@ -11,6 +11,8 @@ module.exports = {
   dbPath: path.join(ROOT_DIR, 'data', 'app.db'),
   logDir: path.join(ROOT_DIR, 'logs'),
   publicDir: path.join(ROOT_DIR, 'public'),
+  // 访问口令（HTTP Basic）：留空表示不启用校验；公网部署必须设置
+  accessPassword: process.env.HOMEWORK_ACCESS_PASSWORD || '',
   zenmux: {
     apiKey: process.env.ZENMUX_API_KEY || '',
     baseUrl: process.env.ZENMUX_BASE_URL || 'https://zenmux.ai/api/v1',

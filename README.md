@@ -26,6 +26,29 @@ cp .env.example .env
 | `ZENMUX_IMAGE_MODEL` | `openai/gpt-image-2.5-sunburst` | 生图模型 |
 | `ZENMUX_VISION_MODEL` | `bytedance/doubao-seed-2.0-lite` | 视觉校验模型 |
 | `PORT` | `3000` | 服务端口 |
+| `HOMEWORK_ACCESS_PASSWORD` | （空） | 访问口令（HTTP Basic），见下节「访问口令与部署」 |
+
+## 访问口令与部署
+
+**访问口令（`HOMEWORK_ACCESS_PASSWORD`）**
+
+- 未设置或留空：不启用校验，所有请求直接放行，仅限本机使用；服务启动时日志会输出 WARN 提醒。
+- 已设置：所有请求（页面、静态资源、全部 `/api`）均要求 HTTP Basic 认证。浏览器首次访问会弹出原生账号密码框，输入任意用户名与正确口令后，同域请求自动携带凭据；口令错误返回 401 与统一错误 JSON。
+- 公网部署必须设置该变量；口令仅通过环境变量注入，不出现在前端代码中。
+
+**反向代理路径前缀**
+
+前端全部使用相对路径（`style.css`、`app.js`、`api/...`），因此应用可被 nginx 反代挂载到任意路径前缀下，
+例如 `https://www.lenoxshawn.com/apps/homework/`。参考配置：
+
+```nginx
+location /apps/homework/ {
+    proxy_pass http://127.0.0.1:3000/;   # 末尾 / 表示剥离 /apps/homework 前缀后转发
+}
+```
+
+原理：页面位于 `/apps/homework/` 时，相对路径 `api/images/...` 解析为
+`/apps/homework/api/images/...`，nginx 剥离前缀后转发给后端 `/api/images/...`，与现有路由完全兼容。
 
 ## 运行
 
