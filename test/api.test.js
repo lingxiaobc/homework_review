@@ -80,7 +80,7 @@ test('API 全链路：上传批次 → 轮询 → 原图/结果图 → 状态守
   const detail = await res.json();
   assert.equal(detail.status, 'SUCCEEDED');
   assert.equal(detail.latest_attempt.provider_request_id, 'req_api_1');
-  assert.equal(detail.latest_attempt.prompt_version, 'grading-v1');
+  assert.equal(detail.latest_attempt.prompt_version, 'grading-v1.1');
 
   // ⑤ 状态守卫：非 FAILED 图片重试 → 409 INVALID_STATE
   res = await fetch(`${base}/api/images/${firstId}/retry`, { method: 'POST' });

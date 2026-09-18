@@ -61,7 +61,7 @@ test('状态流转（成功路径）：UPLOADED → VALIDATING → READY → GEN
   assert.equal(attempt.attempt_no, 1);
   assert.equal(attempt.status, 'SUCCEEDED');
   assert.equal(attempt.provider_request_id, 'req_ok_1');
-  assert.equal(attempt.prompt_version, 'grading-v1');
+  assert.equal(attempt.prompt_version, 'grading-v1.1');
   assert.equal(attempt.model_id, 'test-image-model');
   assert.equal(typeof attempt.latency_ms, 'number');
   assert.ok(attempt.finished_at);
@@ -70,6 +70,13 @@ test('状态流转（成功路径）：UPLOADED → VALIDATING → READY → GEN
   // 生图模型收到批改提示词
   assert.equal(sdk.calls.image.length, 1);
   assert.match(sdk.calls.image[0], /高中物理老师/);
+
+  // 生图收到与存储一致的原图（/images/edits 随请求携带原图）
+  const rawKey = getImageRow(env, image_ids[0]).raw_image_key;
+  assert.equal(sdk.calls.imageInputs.length, 1);
+  assert.deepEqual(sdk.calls.imageInputs[0].buffer, env.storage.readRaw(rawKey));
+  assert.equal(sdk.calls.imageInputs[0].mimeType, 'image/png');
+  assert.equal(sdk.calls.imageInputs[0].fileName, `${image_ids[0]}.png`);
 });
 
 test('attempt 失败记录：生图失败时 erroe_code/error_type/error_message 三要素落库，图片 FAILED', async () => {

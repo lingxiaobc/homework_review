@@ -37,7 +37,7 @@ function basicAuthHeader(user, password) {
 // fake sdk：不真调外部 API，以依赖注入方式传入 gradingService。
 // 可通过 sdk.state 在测试中途切换成功/失败行为。
 function createFakeSdk(options = {}) {
-  const calls = { vision: [], image: [] };
+  const calls = { vision: [], image: [], imageInputs: [] };
   const state = {
     visionResult: options.visionResult || { is_physics: true, reason: '测试物理题' },
     visionError: options.visionError || null,
@@ -59,8 +59,10 @@ function createFakeSdk(options = {}) {
     },
     image: {
       modelId: state.imageModelId,
-      async generateImage(prompt) {
+      // 与真实 SDK 签名一致：generateImage(prompt, originalImage)
+      async generateImage(prompt, originalImage) {
         calls.image.push(prompt);
+        calls.imageInputs.push(originalImage || null);
         if (state.imageError) throw state.imageError;
         return { b64_json: TINY_PNG_B64, requestId: state.requestId };
       },

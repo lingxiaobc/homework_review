@@ -101,7 +101,7 @@
   "status": "FAILED",
   "validation_status": "PASSED",
   "result_image_key": null,
-  "error_message": "ZenMux 请求超时（180000ms）：/images/generations",
+  "error_message": "ZenMux 请求超时（180000ms）：/images/edits",
   "created_at": "2026-09-18T08:00:00.000Z",
   "updated_at": "2026-09-18T08:03:30.000Z",
   "latest_attempt": {
@@ -109,7 +109,7 @@
     "image_id": "0b9e6b1e-6f5a-4a7d-9d1f-6c1c2b3a4d5e",
     "attempt_no": 1,
     "model_id": "openai/gpt-image-2.5-sunburst",
-    "prompt_version": "grading-v1",
+    "prompt_version": "grading-v1.1",
     "status": "FAILED",
     "provider_request_id": null,
     "started_at": "2026-09-18T08:00:50.000Z",
@@ -117,7 +117,7 @@
     "latency_ms": 160012,
     "erroe_code": "TIMEOUT",
     "error_type": "timeout",
-    "error_message": "ZenMux 请求超时（180000ms）：/images/generations"
+    "error_message": "ZenMux 请求超时（180000ms）：/images/edits"
   }
 }
 ```
