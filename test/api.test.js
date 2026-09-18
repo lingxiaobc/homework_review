@@ -127,6 +127,22 @@ test('API 校验与错误格式：非法格式 400、缺字段 400、404 统一 
   assert.equal(body.error.code, 'NOT_FOUND');
 });
 
+test('非 multipart 请求返回 400 VALIDATION_ERROR', async () => {
+  const sdk = createFakeSdk();
+  const env = makeServiceEnv(sdk, 'apimime');
+  const { server, base } = await startServer(env, sdk);
+  test.after(() => server.close());
+
+  const res = await fetch(`${base}/api/batches`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ images: ['x.png'] }),
+  });
+  assert.equal(res.status, 400);
+  const body = await res.json();
+  assert.equal(body.error.code, 'VALIDATION_ERROR');
+});
+
 test('API 重试链路：FAILED 图片经 retry 接口恢复至 SUCCEEDED', async () => {
   const imageError = new Error('首次生成失败');
   imageError.code = '500';

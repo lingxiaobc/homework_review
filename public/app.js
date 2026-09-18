@@ -37,6 +37,7 @@
   let batchId = null;
   let pollTimer = null;
   let pollErrorCount = 0;
+  let uploadInFlight = false;
   const rejectionModalShown = new Set();
 
   function showPageStatus(message) {
@@ -60,7 +61,8 @@
     const names = selectedFiles.map((f) => f.name).join('、');
     els.selectedSummary.textContent = `已选择 ${selectedFiles.length} 张图片：${names}`;
     els.selectedSummary.hidden = false;
-    els.uploadBtn.disabled = false;
+    // 上传在途期间保持禁用，避免并发创建批次
+    els.uploadBtn.disabled = uploadInFlight;
   }
 
   function acceptFiles(fileList) {
@@ -72,7 +74,8 @@
   }
 
   async function upload() {
-    if (selectedFiles.length === 0) return;
+    if (selectedFiles.length === 0 || uploadInFlight) return;
+    uploadInFlight = true;
     els.uploadBtn.disabled = true;
 
     const formData = new FormData();
@@ -88,7 +91,6 @@
       }
       selectedFiles = [];
       els.fileInput.value = '';
-      updateSelectedSummary();
       clearPageStatus();
       batchId = body.batch_id;
       rejectionModalShown.clear();
@@ -98,6 +100,8 @@
       startPolling();
     } catch (err) {
       showPageStatus(err.message);
+    } finally {
+      uploadInFlight = false;
       updateSelectedSummary();
     }
   }
@@ -127,6 +131,8 @@
         throw new Error((body.error && body.error.message) || `查询批次失败（HTTP ${res.status}）`);
       }
       pollErrorCount = 0;
+      // 轮询恢复正常，清除此前的瞬时网络错误提示
+      clearPageStatus();
       renderCards(body.images);
       // 批次内没有进行中的图片后停止轮询
       if (body.images.every((image) => TERMINAL_STATUSES.has(image.status))) {
@@ -195,7 +201,11 @@
       const retryBtn = document.createElement('button');
       retryBtn.className = 'button button-secondary';
       retryBtn.textContent = '重试';
-      retryBtn.addEventListener('click', () => retryImage(image.image_id));
+      // 立即禁用防止双击重复提交；卡片随轮询重建会自然恢复
+      retryBtn.addEventListener('click', () => {
+        retryBtn.disabled = true;
+        retryImage(image.image_id);
+      });
       actions.appendChild(retryBtn);
     }
     if (image.status === 'SUCCEEDED') {

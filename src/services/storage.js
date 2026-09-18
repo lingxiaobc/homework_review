@@ -9,7 +9,13 @@ const path = require('path');
 // key 即相对路径字符串，随 raw_image_key / result_image_key 落库。
 function createStorage({ rootDir }) {
   function resolveKey(key) {
-    return path.join(rootDir, key);
+    const abs = path.join(rootDir, key);
+    // 防御纵深：解析结果必须仍位于 rootDir 内，防止 key 携带 .. 越界
+    const rel = path.relative(rootDir, abs);
+    if (rel.startsWith('..') || path.isAbsolute(rel)) {
+      throw new Error(`非法的存储 key（越界）：${key}`);
+    }
+    return abs;
   }
 
   function write(key, buffer) {
