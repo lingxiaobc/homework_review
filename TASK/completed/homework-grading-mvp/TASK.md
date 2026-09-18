@@ -11,7 +11,7 @@ approved_scope: A-01,A-02,A-03,A-04,A-05,A-06
 approved_plan_digest: sha256:994bfd69713f64936665352d683583ede9823270e447a411a8215632c12583f2
 routing_mode: auto
 selected_modules: M-01,M-03,M-06,M-07
-execution_status: IN_PROGRESS
+execution_status: COMPLETED
 created_at: 2026-09-18
 updated_at: 2026-09-18
 ---
@@ -76,10 +76,13 @@ updated_at: 2026-09-18
 - 2026-09-18 | H-02 | 判定=支持。观察：本地文件系统 + SQLite 满足三表与 key 语义——V5 核对 raw_image_key/result_image_key 与磁盘文件逐字节一致，状态流转读写正常（成功/拒绝/失败三路径）。覆盖条件=端到端三路径实测（已满足）。
 - 2026-09-18 | T-08 | evidence: type=manual; locator=risk-reviewer 审查报告（git rev-list --all 全历史密钥扫描、六类敏感路径 ls-files/check-ignore 核对、logger 调用点走查、multipart/storage/api 源码通读、npm ls 依赖核对）; result=无高级风险：全部提交历史与工作区零密钥泄漏（sk-ai-v1 扫描无命中，误报仅为 "risk-reviewer" 字样）、敏感路径从未入库、无破坏性操作、外呼面唯一（SDK）、依赖恰为 express/better-sqlite3/busboy 三项；风险审查与前端质量审查（前条）均通过，无未处理的高风险项
 - 2026-09-18 | 审查修正处置 | .env 权限 777→600（已修复，chmod 实测确认）；其余 6 项（前端 D1/D2/D3、非 multipart 500→400、busboy 限额、绑定 127.0.0.1、resolveKey 断言）由小修代理在 worktree 修复并复测后合并；目录 777 属环境现状不擅改，遗留提示用户
-- 2026-09-18 | 隐私提示（运营层，非代码缺陷） | 学生作业图片以 base64 发往第三方 zenmux.ai 属产品预期功能；作业可能含未成年人个人信息，提请用户在实际使用时自行评估告知同意与留存策略。
+- 2026-09-18 | 审查修正合并与复测 | evidence: type=test; locator=合并提交（worktree 分支 dcf3e69 合并入 main，7 文件 +75/-10，受保护文件零改动）+ 主目录复测 npm test 16/16 + 冒烟（npm start 首页 200、非 multipart POST 得 400 VALIDATION_ERROR、ss 确认监听 127.0.0.1:3000、进程已关闭）; result=7 项审查修正（前端 D1/D2/D3、契约 400、10MB/20 文件限额、回环绑定、resolveKey 断言）全部落地并通过复测；api.md 补限额说明一行
+- 2026-09-18 | 完成核对 | 完成标准逐条核对完毕，overall 与各行动证据见"完成标准"章节，申请迁移 COMPLETED。
+- 2026-09-18 | 未覆盖项与遗留提示 | ① 浏览器人工体验（环境无 headless 浏览器，UI 已静态审查 + API 级端到端替代，建议用户启动后亲自体验）；② 上传图片经 ZenMux 外发的隐私评估（运营层）；③ 项目目录 777 权限属环境现状未擅改；④ 一个已合并 worktree 因平台代理锁暂留存于 .claude/worktrees/（gitignored，平台自动回收）。
 - 2026-09-18 | H-02 | 状态=待验证（A-03/A-06 执行时记录观察）。
 - 2026-09-18 | 战略检验（外部依赖先行） | 观察窗口=A-04/A-05 执行期；观察点=是否因协议误判返工及返工集中层；暂无法判断。
 - 2026-09-18 | state: PENDING -> IN_PROGRESS | reason: 开始或恢复执行
+- 2026-09-18 | state: IN_PROGRESS -> COMPLETED | reason: 全部验收通过
 
 ## 完成标准
 
@@ -89,3 +92,10 @@ updated_at: 2026-09-18
 - 密钥未出现在任何源码、交付文档与版本库中（.gitignore 与 .env 机制生效）。
 - 全部获批行动（A-01..A-06）均有结构化完成证据；verification-executor 与 risk-reviewer 通过且无未处理高风险项。
 - overall：上述全部满足后标记 COMPLETED，附 overall 证据。
+- A-01 | evidence: type=artifact; locator=docs/zenmux-protocol-notes.md; result=协议纪要覆盖 base URL/Bearer 鉴权/两类调用请求响应格式，关键结论附来源链接，未确认项如实标注
+- A-02 | evidence: type=command; locator=/tmp/zenmux-probe.mjs、/tmp/zenmux-probe2.mjs、/tmp/zenmux-probe3.mjs（退出码 0）; result=生图 HTTP 200 有效 PNG（1024x1024，b64 解码 1,408,423 字节）；视觉 4 次 HTTP 200（json_schema strict 强制 {is_physics,reason} 精确键名）；错误结构 403/access_denied 实测确认；密钥全程脱敏零泄漏
+- A-03 | evidence: type=file; locator=src/db/schema.sql + src/db/database.js; result=三表字段、CHECK 枚举、UNIQUE(image_id,attempt_no)、erroe_code 原文拼写与 F-04 逐项一致；测试 ok4-8 验证建表幂等/字段/外键/枚举/UNIQUE（16/16 通过）
+- A-04 | evidence: type=file; locator=src/sdk/zenmux/{client,vision,image}.js + docs/api.md + npm test; result=SDK 独立模块为业务代码唯一外部出口（json_schema strict/X-ZenMux-RequestId 捕获/403 兼容错误规范化）；六端点契约文档化；状态流转与 generation_attempts 记录测试可复现（ok9-13、ok15）
+- A-05 | evidence: type=manual; locator=verification-executor V2/V3 API 级端到端 + artifact-quality-reviewer 交互走查 + 冒烟首页 200; result=真实端到端闭环（上传→SUCCEEDED→结果图下载）与拒绝弹窗/重试逻辑经替代证据确认；浏览器人工复核如实列为未覆盖项
+- A-06 | evidence: type=test; locator=verification-executor 报告 V1-V6 + risk-reviewer 报告 + artifact-quality-reviewer 报告 + 审查修正合并复测; result=三路径全过（成功 101s 出图/拒绝 11s/失败三要素落库）、三表一致性 8/8、零密钥泄漏、无未处理高风险项；7 项审查修正合并后主目录复测 16/16 且冒烟通过（400 映射/限额/回环绑定实测）
+- overall | evidence: type=manual; locator=2026-09-18 主程序完成标准复核：npm start 可启动（冒烟 200）、三路径端到端证据（V2/V3/V4）、三表一致性（V5 8/8）、密钥不入库（V6 + 全历史扫描 + .env 权限 600）、T-01..T-08 全部勾选且 A-01..A-06 证据齐备、verification-executor 与 risk-reviewer 审阅通过; result=全部完成标准满足，获批范围 A-01..A-06 无遗漏，计划版本 v1 与模块快照 M-01,M-03,M-06,M-07 未变
