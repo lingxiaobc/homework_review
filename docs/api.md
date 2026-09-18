@@ -37,6 +37,8 @@
 | --- | --- | --- | --- |
 | `images` | file（可多个） | 是 | png / jpeg 图片文件 |
 
+**限额**：单次最多 20 个文件，单个文件最大 10MB；超限返回 400 `VALIDATION_ERROR`。
+
 **响应** `201 Created`：
 
 ```json

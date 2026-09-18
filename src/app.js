@@ -30,11 +30,17 @@ function createApp({ config, db, storage, sdk, logger }) {
     res.status(404).send('Not Found');
   });
 
-  // 统一错误处理：服务层异常（NOT_FOUND/INVALID_STATE）映射为 404/409，其余 500
+  // 统一错误处理：错误 code（NOT_FOUND/INVALID_STATE/VALIDATION_ERROR）映射为 404/409/400，其余 500
   // eslint-disable-next-line no-unused-vars
   app.use((err, req, res, next) => {
     const status =
-      err && err.code === 'NOT_FOUND' ? 404 : err && err.code === 'INVALID_STATE' ? 409 : 500;
+      err && err.code === 'NOT_FOUND'
+        ? 404
+        : err && err.code === 'INVALID_STATE'
+          ? 409
+          : err && err.code === 'VALIDATION_ERROR'
+            ? 400
+            : 500;
     if (status >= 500) {
       logger.error('服务器内部错误', { method: req.method, path: req.originalUrl, message: err.message, stack: err.stack });
     }
