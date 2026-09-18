@@ -1,0 +1,19 @@
+{
+  "name": "homework-grading",
+  "version": "1.0.0",
+  "private": true,
+  "description": "学生作业批改系统 V1.0.0 MVP（Express + SQLite + 原生前端）",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node --env-file=.env src/server.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.10.0",
+    "busboy": "^1.6.0",
+    "express": "^4.21.2"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true
+  }
+}

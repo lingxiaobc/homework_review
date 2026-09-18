@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生作业批改系统</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="header">
+    <h1>学生作业批改系统</h1>
+    <p class="subtitle">上传高中物理作业图片，AI 自动校验并生成批改标注</p>
+  </header>
+
+  <main class="main">
+    <section class="upload-section">
+      <div id="drop-zone" class="drop-zone">
+        <p class="drop-text">拖拽图片到此处，或</p>
+        <label for="file-input" class="button button-secondary">选择图片</label>
+        <input type="file" id="file-input" multiple accept="image/png,image/jpeg" hidden>
+        <p class="hint">支持 png / jpeg，一次提交为一个批次</p>
+      </div>
+      <p id="selected-summary" class="selected-summary" hidden></p>
+      <p id="page-status" class="page-status" hidden></p>
+      <button id="upload-btn" class="button button-primary" disabled>上传并开始批改</button>
+    </section>
+
+    <section id="batch-section" class="batch-section" hidden>
+      <h2 id="batch-title" class="batch-title"></h2>
+      <div id="cards" class="grid"></div>
+    </section>
+  </main>
+
+  <!-- 非物理题警告模态框 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <p class="modal-icon">⚠️</p>
+      <p id="modal-message" class="modal-message"></p>
+      <button id="modal-close" class="button button-primary">我知道了，重新上传</button>
+    </div>
+  </div>
+
+  <!-- 结果图放大查看 -->
+  <div id="lightbox" class="modal hidden">
+    <div class="lightbox-box">
+      <img id="lightbox-img" class="lightbox-img" alt="批改结果大图">
+      <div class="lightbox-actions">
+        <a id="lightbox-download" class="button button-secondary" download="批改结果.png">下载结果图</a>
+        <button id="lightbox-close" class="button button-secondary">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
