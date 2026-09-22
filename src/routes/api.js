@@ -88,8 +88,8 @@ function createApiRouter({ service, storage }) {
   // POST /api/images/:id/retry：FAILED 图片重试（异步执行，立即返回 GENERATING）
   router.post('/images/:id/retry', (req, res, next) => {
     try {
-      service.startRetry(req.params.id);
-      res.status(202).json({ image_id: req.params.id, status: 'GENERATING' });
+      const status = service.startRetry(req.params.id);
+      res.status(202).json({ image_id: req.params.id, status });
     } catch (err) {
       next(err);
     }

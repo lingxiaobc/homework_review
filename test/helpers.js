@@ -39,7 +39,7 @@ function basicAuthHeader(user, password) {
 function createFakeSdk(options = {}) {
   const calls = { vision: [], image: [], imageInputs: [] };
   const state = {
-    visionResult: options.visionResult || { is_physics: true, reason: '测试物理题' },
+    visionResult: options.visionResult || { is_physics: true, grading_advice: '第1题正确，在答案旁打勾。' },
     visionError: options.visionError || null,
     imageError: options.imageError || null,
     requestId: options.requestId || 'req_test_001',

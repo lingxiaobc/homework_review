@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · 学生作业批改系统</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="login-panel">
+    <h1>学生作业批改系统</h1>
+    <p class="subtitle">输入访问密码，开始批改高中物理作业。</p>
+    <form id="login-form">
+      <label for="username">用户名（选填）</label>
+      <input id="username" name="username" autocomplete="username" placeholder="任意用户名">
+      <label for="password">访问密码</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required autofocus>
+      <p id="login-error" class="page-status" role="alert" hidden></p>
+      <button id="login-submit" class="button button-primary" type="submit">进入批改页面</button>
+    </form>
+  </main>
+  <script src="login.js"></script>
+</body>
+</html>

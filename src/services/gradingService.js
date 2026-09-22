@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { validateVerdict, rejection } = require('../../public/gradingRules');
 
 // 三层共用状态机（与 schema.sql CHECK 枚举一致）：
 // - 图片级 status：UPLOADED → VALIDATING →（视觉判定 PASSED → READY → GENERATING → SUCCEEDED | FAILED；
@@ -52,6 +53,7 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
     ),
     setStatus: db.prepare('UPDATE images SET status = ?, updated_at = ? WHERE image_id = ?'),
     setValidation: db.prepare('UPDATE images SET validation_status = ?, updated_at = ? WHERE image_id = ?'),
+    saveVerdict: db.prepare('UPDATE images SET is_physics = ?, grading_advice = ?, validation_status = ?, status = ?, updated_at = ? WHERE image_id = ?'),
     finishSuccess: db.prepare(
       'UPDATE images SET status = ?, result_image_key = ?, updated_at = ? WHERE image_id = ?'
     ),
@@ -105,17 +107,20 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
   }
 
   // 校验 + 生成全链路：UPLOADED → VALIDATING →（REJECTED | READY → GENERATING → SUCCEEDED | FAILED）
-  async function processImage(imageId) {
+  async function processImage(imageId, retry = false) {
     const image = stmts.getImage.get(imageId);
-    if (!image || image.status !== 'UPLOADED') {
+    if (!image || image.status !== (retry ? 'FAILED' : 'UPLOADED')) {
       return; // 已处理或不存在，幂等跳过
     }
 
-    transition(imageId, 'VALIDATING');
-
     let verdict;
     try {
-      verdict = await sdk.vision.validateImage(toDataUrl(image));
+      transition(imageId, 'VALIDATING');
+      stmts.setValidation.run('PENDING', nowIso(), imageId);
+      verdict = validateVerdict(await sdk.vision.validateImage(toDataUrl(image)));
+      const rejected = rejection(verdict);
+      stmts.saveVerdict.run(verdict.is_physics ? 1 : 0, verdict.grading_advice,
+        rejected ? 'REJECTED' : 'PASSED', rejected ? 'REJECTED' : 'READY', nowIso(), imageId);
     } catch (err) {
       const props = errorProps(err);
       stmts.setValidation.run('FAILED', nowIso(), imageId);
@@ -124,28 +129,36 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
       return;
     }
 
-    if (!verdict.is_physics) {
-      stmts.setValidation.run('REJECTED', nowIso(), imageId);
-      transition(imageId, 'REJECTED');
-      logger.warn('视觉审核拒绝：图片不是高中物理题', { image_id: imageId, reason: verdict.reason });
+    if (rejection(verdict)) {
+      logger.warn('视觉审核拒绝', { image_id: imageId, kind: rejection(verdict).kind });
       return;
     }
 
-    stmts.setValidation.run('PASSED', nowIso(), imageId);
-    transition(imageId, 'READY');
     await runGeneration(imageId);
+  }
+
+  function hasGenerationAdvice(image) {
+    if (image.validation_status !== 'PASSED' || image.is_physics !== 1) return false;
+    try {
+      return !rejection(validateVerdict({ is_physics: true, grading_advice: image.grading_advice }));
+    } catch { return false; }
   }
 
   // 生成阶段：READY / FAILED（重试）→ GENERATING → SUCCEEDED | FAILED
   async function runGeneration(imageId) {
+    if (!hasGenerationAdvice(getImageOrThrow(imageId))) {
+      throw new ConflictError('缺少有效批改建议，不能进入生图');
+    }
     transition(imageId, 'GENERATING');
 
     const attemptId = uuid();
-    const attemptNo = stmts.nextAttemptNo.get(imageId).no;
-    stmts.insertAttempt.run(attemptId, imageId, attemptNo, sdk.image.modelId, promptVersion, nowIso());
-
+    let attemptNo;
+    let attemptCreated = false;
     const startedAtMs = Date.now();
     try {
+      attemptNo = stmts.nextAttemptNo.get(imageId).no;
+      stmts.insertAttempt.run(attemptId, imageId, attemptNo, sdk.image.modelId, promptVersion, nowIso());
+      attemptCreated = true;
       // /images/edits 需携带学生作业原图（存储中的原图文件）
       const image = getImageOrThrow(imageId);
       const originalImage = {
@@ -153,7 +166,8 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
         mimeType: extToMime(image.raw_image_key),
         fileName: image.raw_image_key.split('/').pop(),
       };
-      const { b64_json, requestId } = await sdk.image.generateImage(gradingPrompt, originalImage);
+      const prompt = `${gradingPrompt}\n\n以下是已审核并保存的批改建议，仅按此标注：\n${image.grading_advice}`;
+      const { b64_json, requestId } = await sdk.image.generateImage(prompt, originalImage);
       const resultKey = storage.saveResultImage(imageId, Buffer.from(b64_json, 'base64'));
       const latencyMs = Date.now() - startedAtMs;
       stmts.completeAttempt.run(nowIso(), latencyMs, requestId ?? null, attemptId);
@@ -167,8 +181,8 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
     } catch (err) {
       const latencyMs = Date.now() - startedAtMs;
       const props = errorProps(err);
-      stmts.failAttempt.run(nowIso(), latencyMs, props.erroe_code, props.error_type, props.error_message, attemptId);
       transition(imageId, 'FAILED');
+      if (attemptCreated) stmts.failAttempt.run(nowIso(), latencyMs, props.erroe_code, props.error_type, props.error_message, attemptId);
       logger.error('批改结果图生成失败', { image_id: imageId, attempt_no: attemptNo, latency_ms: latencyMs, ...props });
     }
   }
@@ -214,11 +228,11 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
     if (image.status !== 'FAILED') {
       return null;
     }
-    if (latestAttempt && latestAttempt.status === 'FAILED') {
-      return latestAttempt.error_message;
-    }
     if (image.validation_status === 'FAILED') {
       return '视觉校验失败：模型调用未成功';
+    }
+    if (latestAttempt && latestAttempt.status === 'FAILED') {
+      return latestAttempt.error_message;
     }
     return null;
   }
@@ -231,6 +245,8 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
       batch_id: image.batch_id,
       status: image.status,
       validation_status: image.validation_status,
+      is_physics: image.is_physics == null ? null : image.is_physics === 1,
+      grading_advice: image.grading_advice,
       has_result: Boolean(image.result_image_key),
       error_message: resolveErrorMessage(image, attempt),
       created_at: image.created_at,
@@ -246,6 +262,8 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
       image_id: image.image_id,
       batch_id: image.batch_id,
       raw_image_key: image.raw_image_key,
+      is_physics: image.is_physics == null ? null : image.is_physics === 1,
+      grading_advice: image.grading_advice,
       status: image.status,
       validation_status: image.validation_status,
       result_image_key: image.result_image_key,
@@ -267,7 +285,8 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
   async function retryImage(imageId) {
     const image = getImageOrThrow(imageId);
     assertRetryable(image);
-    await runGeneration(imageId);
+    if (hasGenerationAdvice(image)) await runGeneration(imageId);
+    else await processImage(imageId, true);
   }
 
   // 启动重试但不等待完成：同步校验状态后立即返回（路由层据此返回 202），
@@ -275,18 +294,24 @@ function createGradingService({ db, storage, sdk, logger, gradingPrompt, promptV
   function startRetry(imageId) {
     const image = getImageOrThrow(imageId);
     assertRetryable(image);
-    runGeneration(imageId).catch((err) => {
-      logger.error('重试流水线异常退出', { image_id: imageId, ...errorProps(err) });
-    });
+    const status = hasGenerationAdvice(image) ? 'GENERATING' : 'VALIDATING';
+    const work = status === 'GENERATING' ? runGeneration(imageId) : processImage(imageId, true);
+    work.catch((err) => handlePipelineError(imageId, err));
+    return status;
   }
 
   // 上传响应发出后，异步启动每张图的校验+生成流水线（进程内，无消息队列）
   function startBatchProcessing(imageIds) {
     for (const imageId of imageIds) {
-      processImage(imageId).catch((err) => {
-        logger.error('图片处理流水线异常退出', { image_id: imageId, ...errorProps(err) });
-      });
+      processImage(imageId).catch((err) => handlePipelineError(imageId, err));
     }
+  }
+
+  function handlePipelineError(imageId, err) {
+    // 数据库完全不可写时也不能让第二次异常成为未处理的Promise。
+    try { transition(imageId, 'FAILED'); }
+    catch (stateError) { logger.error('无法保存失败状态', { image_id: imageId, ...errorProps(stateError) }); }
+    logger.error('图片处理流水线异常退出', { image_id: imageId, ...errorProps(err) });
   }
 
   return {

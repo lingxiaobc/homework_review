@@ -2,10 +2,11 @@
 
 const { ZenMuxError } = require('./client');
 const { VISION_PROMPT } = require('../../prompts/visionPrompt');
+const { validateVerdict } = require('../../../public/gradingRules');
 
 // 视觉审核 API：POST /chat/completions
 // content 数组 = [固定审核指令, {type:"image_url", image_url:{url}}]；
-// response_format 用 json_schema strict 强制 {is_physics, reason}
+// response_format 用 json_schema strict 强制 {is_physics, grading_advice}
 // （实测可用；降级方案为 json_object + 提示词钉键名，见协议纪要 A-02）。
 function createVisionApi(client, { model, timeoutMs }) {
   const RESPONSE_FORMAT = {
@@ -17,9 +18,9 @@ function createVisionApi(client, { model, timeoutMs }) {
         type: 'object',
         properties: {
           is_physics: { type: 'boolean' },
-          reason: { type: 'string' },
+          grading_advice: { type: 'string' },
         },
-        required: ['is_physics', 'reason'],
+        required: ['is_physics', 'grading_advice'],
         additionalProperties: false,
       },
     },
@@ -30,7 +31,7 @@ function createVisionApi(client, { model, timeoutMs }) {
 
     /**
      * @param {string} dataUrl 图片 data URL（data:image/png;base64,...）
-     * @returns {Promise<{is_physics: boolean, reason: string}>} 结构化判定结果
+     * @returns {Promise<{is_physics: boolean, grading_advice: string}>} 结构化判定结果
      */
     async validateImage(dataUrl) {
       const { data } = await client.request('/chat/completions', {
@@ -66,10 +67,11 @@ function createVisionApi(client, { model, timeoutMs }) {
         });
       }
 
-      return {
-        is_physics: parsed.is_physics === true,
-        reason: typeof parsed.reason === 'string' ? parsed.reason : '',
-      };
+      try {
+        return validateVerdict(parsed);
+      } catch (err) {
+        throw new ZenMuxError({ code: 'VISION_SCHEMA_ERROR', type: 'protocol', message: err.message });
+      }
     },
   };
 }

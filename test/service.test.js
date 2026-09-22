@@ -17,7 +17,7 @@ function getAttempts(env, imageId) {
 }
 
 test('状态流转（拒绝路径）：UPLOADED → VALIDATING → REJECTED，不产生 attempt', async () => {
-  const sdk = createFakeSdk({ visionResult: { is_physics: false, reason: '是一张风景照' } });
+  const sdk = createFakeSdk({ visionResult: { is_physics: false, grading_advice: '是一张风景照' } });
   const env = makeServiceEnv(sdk, 'reject');
 
   const { batch_id, image_ids } = env.service.createBatch([{ filename: 'a.png', buffer: tinyPngBuffer(), ext: 'png' }]);
@@ -61,7 +61,7 @@ test('状态流转（成功路径）：UPLOADED → VALIDATING → READY → GEN
   assert.equal(attempt.attempt_no, 1);
   assert.equal(attempt.status, 'SUCCEEDED');
   assert.equal(attempt.provider_request_id, 'req_ok_1');
-  assert.equal(attempt.prompt_version, 'grading-v1.1');
+  assert.equal(attempt.prompt_version, 'grading-v1.0.1');
   assert.equal(attempt.model_id, 'test-image-model');
   assert.equal(typeof attempt.latency_ms, 'number');
   assert.ok(attempt.finished_at);

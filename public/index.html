@@ -10,10 +10,12 @@
   <header class="page-header">
     <h1>学生作业批改系统</h1>
     <p class="subtitle">上传高中物理作业图片，AI 自动校验并生成批改标注</p>
+    <button id="logout-btn" class="button button-secondary" type="button" hidden>退出登录</button>
   </header>
 
   <main class="main">
     <section class="upload-section" aria-label="上传作业图片">
+      <p class="upload-hint">请保证照片对焦清晰、无反光，题目与作答完整，公式和上下标可辨认。整页文字过小时，建议分区域拍摄后上传。</p>
       <!-- 拖拽区整体为文件 input 的 label：点击按钮或区域任意处均可选文件 -->
       <label id="drop-zone" class="drop-zone" for="file-input">
         <span class="drop-text">拖拽图片到此处，或</span>
@@ -57,6 +59,7 @@
     <button id="lightbox-close" class="lightbox-close" type="button" aria-label="关闭大图">×</button>
   </div>
 
+  <script src="gradingRules.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

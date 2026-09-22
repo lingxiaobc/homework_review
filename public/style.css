@@ -61,6 +61,13 @@
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
+.login-panel { max-width: 460px; margin: 10vh auto; padding: 24px; }
+.login-panel h1 { font-size: 26px; }
+.login-panel form { display: grid; gap: 12px; margin-top: 28px; }
+.login-panel input { min-width: 0; width: 100%; padding: 12px; font: inherit; border: 1px solid var(--control-border); border-radius: var(--radius-control); background: var(--surface); color: var(--text); }
+.upload-hint { color: var(--text-muted); margin: 0 0 16px; }
+.card-advice { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--font-note); }
+
 * {
   box-sizing: border-box;
 }

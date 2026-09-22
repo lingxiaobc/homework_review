@@ -23,3 +23,7 @@ uploads/
 # 系统文件
 .DS_Store
 Thumbs.db
+
+# 本地执行记录与验证缓存（保留既有忽略规则）
+TASK/
+.cache/

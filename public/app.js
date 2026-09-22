@@ -4,12 +4,12 @@
   // 与后端图片级状态机对应的中文徽标文案
   const STATUS_LABELS = {
     UPLOADED: '已上传',
-    VALIDATING: '校验中',
+    VALIDATING: '审核与分析中',
     READY: '待生成',
     GENERATING: '生成中',
     SUCCEEDED: '已完成',
     FAILED: '失败',
-    REJECTED: '非物理题',
+    REJECTED: '需重新上传',
   };
   const TERMINAL_STATUSES = new Set(['SUCCEEDED', 'FAILED', 'REJECTED']);
   const POLL_INTERVAL_MS = 2500;
@@ -38,6 +38,16 @@
   let pollTimer = null;
   let pollErrorCount = 0;
   let uploadInFlight = false;
+  let pollInFlight = false;
+  async function apiFetch(url, options) {
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+      stopPolling();
+      window.location.replace('login.html');
+      throw new Error('登录已过期，请重新登录');
+    }
+    return res;
+  }
   const rejectionModalShown = new Set();
   // 模态/灯箱打开时的焦点位置，关闭时归还（配合可达性焦点管理）
   let modalReturnFocus = null;
@@ -88,7 +98,7 @@
     }
 
     try {
-      const res = await fetch('api/batches', { method: 'POST', body: formData });
+      const res = await apiFetch('api/batches', { method: 'POST', body: formData });
       const body = await res.json();
       if (!res.ok) {
         throw new Error((body.error && body.error.message) || `上传失败（HTTP ${res.status}）`);
@@ -127,10 +137,13 @@
   }
 
   async function poll() {
-    if (!batchId) return;
+    if (!batchId || pollInFlight) return;
+    pollInFlight = true;
+    const requestedBatch = batchId;
     try {
-      const res = await fetch(`api/batches/${batchId}`);
+      const res = await apiFetch(`api/batches/${requestedBatch}`);
       const body = await res.json();
+      if (requestedBatch !== batchId) return;
       if (!res.ok) {
         throw new Error((body.error && body.error.message) || `查询批次失败（HTTP ${res.status}）`);
       }
@@ -149,7 +162,7 @@
         stopPolling();
         showPageStatus(`查询批次状态多次失败，已停止轮询：${err.message}`);
       }
-    }
+    } finally { pollInFlight = false; }
   }
 
   function renderCards(images) {
@@ -158,7 +171,7 @@
       els.cards.appendChild(buildCard(image));
       if (image.status === 'REJECTED' && !rejectionModalShown.has(image.image_id)) {
         rejectionModalShown.add(image.image_id);
-        showModal('该图片不是高中物理题，请重新上传');
+        showModal(GradingRules.rejectionMessage(image));
       }
     }
   }
@@ -196,7 +209,9 @@
     meta.className = 'card-meta';
     const badge = document.createElement('span');
     badge.className = `badge badge-${image.status}`;
-    badge.textContent = STATUS_LABELS[image.status] || image.status;
+    badge.textContent = image.status === 'REJECTED'
+      ? (GradingRules.rejection(image)?.label || '需重新上传')
+      : (STATUS_LABELS[image.status] || image.status);
     const idLabel = document.createElement('span');
     idLabel.className = 'card-id';
     idLabel.textContent = image.image_id.slice(0, 8);
@@ -213,6 +228,28 @@
 
     const actions = document.createElement('div');
     actions.className = 'card-actions';
+    if (image.status === 'REJECTED') {
+      const reason = document.createElement('p');
+      reason.className = 'card-error';
+      reason.textContent = GradingRules.rejectionMessage(image);
+      card.appendChild(reason);
+      const reupload = document.createElement('button');
+      reupload.type = 'button';
+      reupload.className = 'button button-secondary';
+      reupload.textContent = '重新上传';
+      reupload.addEventListener('click', () => els.fileInput.click());
+      actions.appendChild(reupload);
+    }
+    if (image.grading_advice && image.status !== 'REJECTED') {
+      const detail = document.createElement('details');
+      const summary = document.createElement('summary');
+      summary.textContent = '查看批改建议';
+      const advice = document.createElement('p');
+      advice.className = 'card-advice';
+      advice.textContent = image.grading_advice;
+      detail.append(summary, advice);
+      card.appendChild(detail);
+    }
     if (image.status === 'FAILED') {
       const retryBtn = document.createElement('button');
       retryBtn.type = 'button';
@@ -243,7 +280,7 @@
   async function retryImage(imageId) {
     clearPageStatus();
     try {
-      const res = await fetch(`api/images/${imageId}/retry`, { method: 'POST' });
+      const res = await apiFetch(`api/images/${imageId}/retry`, { method: 'POST' });
       const body = await res.json();
       if (!res.ok) {
         throw new Error((body.error && body.error.message) || `重试失败（HTTP ${res.status}）`);
@@ -251,6 +288,8 @@
       startPolling();
     } catch (err) {
       showPageStatus(err.message);
+      const button = document.querySelector(`.card[data-image-id="${imageId}"] button`);
+      if (button) button.disabled = false;
     }
   }
 
@@ -376,4 +415,19 @@
   });
 
   els.uploadBtn.addEventListener('click', upload);
+  const logout = document.getElementById('logout-btn');
+  fetch('api/auth/session').then((res) => res.json()).then((session) => {
+    if (!session.authenticated) window.location.replace('login.html');
+    logout.hidden = !session.password_required;
+  }).catch(() => {});
+  logout.addEventListener('click', async () => {
+    logout.disabled = true;
+    try {
+      const res = await apiFetch('api/auth/logout', { method: 'POST' });
+      if (!res.ok) throw new Error('退出失败，请重试');
+      stopPolling();
+      window.location.replace('login.html');
+    } catch (err) { showPageStatus(err.message); }
+    finally { logout.disabled = false; }
+  });
 })();

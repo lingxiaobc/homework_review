@@ -1,0 +1,42 @@
+{
+	"nodes":[
+		{"id":"start","type":"text","x":0,"y":0,"width":480,"height":130,"text":"V1.0.1 · 登录与上传\n固定访问凭据，服务端校验，保护业务 API 与图片资源。\n上传前提示：对焦清晰、避免反光、完整拍摄。"},
+		{"id":"upload","type":"text","x":0,"y":200,"width":480,"height":130,"text":"保存原图并建立图片记录\nUPLOADED → VALIDATING\n原图不覆盖，重新上传创建新记录。"},
+		{"id":"vision","type":"text","x":0,"y":400,"width":480,"height":230,"text":"视觉审核模型：一次调用，恰好两个字段\n{\"is_physics\": boolean, \"grading_advice\": string}\n学科判断与拍摄质量分开。\n建议承载整页多题：正确打勾、错误圈注附注、潦草区域“？”＋温和提示。\n模糊/反光：建议必须以【重新上传】开头。","color":"1"},
+		{"id":"validate","type":"text","x":0,"y":700,"width":480,"height":160,"text":"后端检查 JSON、恰好两字段、类型与非空建议\n规范化首尾空白；完整保存两字段。\n字段和审核状态事务写入；保存失败不进入生图。"},
+		{"id":"route","type":"text","x":0,"y":930,"width":480,"height":220,"text":"分流顺序（后端执行，前端采用相同规则）\n1. grading_advice.startsWith('【重新上传】') → 质量拒绝\n2. 否则 is_physics=false → 非物理拒绝\n3. 否则 true → 审核通过\n不根据正文关键词猜测。整图不可辨认：false＋前缀，不能提示为确定非物理。","color":"1"},
+		{"id":"quality","type":"text","x":700,"y":830,"width":440,"height":180,"text":"拍摄质量拒绝\nstatus / validation_status = REJECTED\n无论布尔值均不生图。\n展示前缀后的原因，提示重新拍摄上传。\n不调用失败重试接口。","color":"2"},
+		{"id":"nonphysics","type":"text","x":700,"y":1100,"width":440,"height":140,"text":"非物理题拒绝\nstatus / validation_status = REJECTED\n提示上传高中物理作业图片。\n不生图，不调用失败重试接口。","color":"2"},
+		{"id":"ready","type":"text","x":0,"y":1230,"width":480,"height":140,"text":"审核通过：validation_status=PASSED\nREADY → GENERATING\n原图＋固定生图提示词＋已保存的 grading_advice\nPASSED 表示允许生图，不仅表示物理相关。"},
+		{"id":"generate","type":"text","x":0,"y":1440,"width":480,"height":200,"text":"生图模型仅执行标注\n正确打勾；错误圈注＋附注。\n潦草难辨认处标“？”及“字迹有点潦草哦，可以写清晰一点哦”。\n不重判、不补写学生笔迹、不覆盖原图。\n每次实际调用记录 generation_attempts。","color":"1"},
+		{"id":"success","type":"text","x":0,"y":1720,"width":480,"height":130,"text":"SUCCEEDED → 展示 / 下载结果图\n原图、两字段及尝试记录供人工检查。\n本版实测准确率，暂不做自动内容二审。"},
+		{"id":"failure","type":"text","x":-700,"y":850,"width":440,"height":160,"text":"技术失败 → FAILED\n审核调用失败 / 协议错误 / 保存失败 / 生图失败\n展示失败信息；与质量拒绝、非物理拒绝分开。\n保留已有效保存的审核结果。","color":"2"},
+		{"id":"retry","type":"text","x":-700,"y":1160,"width":440,"height":230,"text":"用户点击失败重试（仅 FAILED）\n无有效可生成建议 → VALIDATING，重新审核。\n已有 PASSED＋true＋无前缀的有效建议 → GENERATING，复用建议。\n返回 202 和实际阶段；重复点击只启动一次。\nSUCCEEDED / REJECTED → 409。"},
+		{"id":"reupload","type":"text","x":1350,"y":950,"width":420,"height":140,"text":"用户重新拍摄 / 更换图片并上传\n创建新的图片记录\n保留旧拒绝记录，不反复调用旧图。"}
+	],
+	"edges":[
+		{"id":"e01","fromNode":"start","fromSide":"bottom","toNode":"upload","toSide":"top"},
+		{"id":"e02","fromNode":"upload","fromSide":"bottom","toNode":"vision","toSide":"top"},
+		{"id":"e03","fromNode":"vision","fromSide":"bottom","toNode":"validate","toSide":"top","label":"返回"},
+		{"id":"e04","fromNode":"validate","fromSide":"bottom","toNode":"route","toSide":"top","label":"有效且保存成功"},
+		{"id":"e05","fromNode":"route","fromSide":"right","toNode":"quality","toSide":"left","label":"优先：有前缀"},
+		{"id":"e06","fromNode":"route","fromSide":"right","toNode":"nonphysics","toSide":"left","label":"无前缀且 false"},
+		{"id":"e07","fromNode":"route","fromSide":"bottom","toNode":"ready","toSide":"top","label":"无前缀且 true"},
+		{"id":"e08","fromNode":"ready","fromSide":"bottom","toNode":"generate","toSide":"top"},
+		{"id":"e09","fromNode":"generate","fromSide":"bottom","toNode":"success","toSide":"top","label":"成功"},
+		{"id":"e10","fromNode":"vision","fromSide":"left","toNode":"failure","toSide":"top","label":"调用失败"},
+		{"id":"e11","fromNode":"validate","fromSide":"left","toNode":"failure","toSide":"right","label":"格式或保存失败"},
+		{"id":"e12","fromNode":"generate","fromSide":"left","toNode":"failure","toSide":"bottom","label":"生图失败"},
+		{"id":"e13","fromNode":"failure","fromSide":"bottom","toNode":"retry","toSide":"top"},
+		{"id":"e14","fromNode":"retry","fromSide":"top","toNode":"vision","toSide":"left","label":"重新审核"},
+		{"id":"e15","fromNode":"retry","fromSide":"right","toNode":"ready","toSide":"left","label":"复用审核结果"},
+		{"id":"e16","fromNode":"quality","fromSide":"right","toNode":"reupload","toSide":"top","label":"重新上传"},
+		{"id":"e17","fromNode":"nonphysics","fromSide":"right","toNode":"reupload","toSide":"bottom","label":"更换图片"},
+		{"id":"e18","fromNode":"reupload","fromSide":"top","toNode":"upload","toSide":"right","label":"新图片"}
+	],
+	"metadata":{
+		"version":"1.0-1.0",
+		"frontmatter":{"design_version":"V1.0.1"},
+		"startNode":"start"
+	}
+}

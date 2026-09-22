@@ -1,8 +1,8 @@
 {
   "name": "homework-grading",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
-  "description": "学生作业批改系统 V1.0.0 MVP（Express + SQLite + 原生前端）",
+  "description": "学生作业批改系统 V1.0.1（两字段审核、按建议标注、网页登录）",
   "main": "src/server.js",
   "scripts": {
     "start": "node --env-file=.env src/server.js",

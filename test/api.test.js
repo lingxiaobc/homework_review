@@ -80,7 +80,7 @@ test('API 全链路：上传批次 → 轮询 → 原图/结果图 → 状态守
   const detail = await res.json();
   assert.equal(detail.status, 'SUCCEEDED');
   assert.equal(detail.latest_attempt.provider_request_id, 'req_api_1');
-  assert.equal(detail.latest_attempt.prompt_version, 'grading-v1.1');
+  assert.equal(detail.latest_attempt.prompt_version, 'grading-v1.0.1');
 
   // ⑤ 状态守卫：非 FAILED 图片重试 → 409 INVALID_STATE
   res = await fetch(`${base}/api/images/${firstId}/retry`, { method: 'POST' });
@@ -180,7 +180,7 @@ test('API 重试链路：FAILED 图片经 retry 接口恢复至 SUCCEEDED', asyn
   assert.equal(detail.latest_attempt.status, 'SUCCEEDED');
 });
 
-test('访问口令校验：配置 accessPassword 后全部请求要求 HTTP Basic', async () => {
+test('访问口令校验：未登录页面跳转，业务API受保护，任意用户名Basic兼容', async () => {
   const sdk = createFakeSdk();
   const env = makeServiceEnv(sdk, 'apiauth');
   // 测试服务的静态目录（makeServiceEnv 不含 public/），补一个首页文件供 ③ 校验 200
@@ -190,24 +190,21 @@ test('访问口令校验：配置 accessPassword 后全部请求要求 HTTP Basi
   test.after(() => server.close());
 
   // ① 无凭据请求 / → 401 且响应头含 WWW-Authenticate，错误体为统一 JSON
-  let res = await fetch(`${base}/`);
-  assert.equal(res.status, 401);
-  assert.equal(res.headers.get('www-authenticate'), 'Basic realm="homework-grading"');
-  const body = await res.json();
-  assert.equal(body.error.code, 'UNAUTHORIZED');
-  assert.equal(body.error.message, '访问口令错误');
+  let res = await fetch(`${base}/`, { redirect: 'manual' });
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), 'login.html');
 
   // API 路由同样受保护
   res = await fetch(`${base}/api/batches/no-such-batch`);
   assert.equal(res.status, 401);
-  assert.equal(res.headers.get('www-authenticate'), 'Basic realm="homework-grading"');
+  assert.equal(res.headers.get('www-authenticate'), null);
 
   // ② 错误密码 → 401（用户名不限）
-  res = await fetch(`${base}/`, { headers: { authorization: basicAuthHeader('any', 'wrong-pass') } });
+  res = await fetch(`${base}/api/batches/no-such-batch`, { headers: { authorization: basicAuthHeader('any', 'wrong-pass') } });
   assert.equal(res.status, 401);
 
   // 长度不等或格式不合法的凭据同样拒绝
-  res = await fetch(`${base}/`, { headers: { authorization: 'Basic not-base64!!!' } });
+  res = await fetch(`${base}/api/batches/no-such-batch`, { headers: { authorization: 'Basic not-base64!!!' } });
   assert.equal(res.status, 401);
 
   // ③ 正确凭据（用户名任意）→ 200

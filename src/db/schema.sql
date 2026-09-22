@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS images (
   status            TEXT NOT NULL DEFAULT 'UPLOADED'
                     CHECK (status IN ('UPLOADED', 'VALIDATING', 'READY', 'GENERATING', 'SUCCEEDED', 'FAILED', 'REJECTED')),
   result_image_key  TEXT,             -- 批改结果图 key，成功后写入；可为 NULL
+  is_physics        INTEGER CHECK (is_physics IN (0, 1)),
+  grading_advice    TEXT,
   created_at        TEXT NOT NULL,
   updated_at        TEXT NOT NULL
 );

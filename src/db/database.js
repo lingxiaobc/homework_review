@@ -14,6 +14,12 @@ function openDatabase(dbPath) {
   const db = new Database(dbPath);
   db.pragma('foreign_keys = ON');
   db.exec(SCHEMA_SQL);
+  // CREATE TABLE IF NOT EXISTS 不会更新旧表，迁移只加列，不重跑历史任务。
+  db.transaction(() => {
+    const columns = new Set(db.prepare('PRAGMA table_info(images)').all().map((c) => c.name));
+    if (!columns.has('is_physics')) db.exec('ALTER TABLE images ADD COLUMN is_physics INTEGER CHECK (is_physics IN (0, 1))');
+    if (!columns.has('grading_advice')) db.exec('ALTER TABLE images ADD COLUMN grading_advice TEXT');
+  })();
   return db;
 }
 
