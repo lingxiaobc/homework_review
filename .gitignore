@@ -21,6 +21,10 @@ uploads/
 # 设计文档目录（内含明文 API 密钥，禁止纳入版本库）
 学生作业批改系统设计/
 
+# 任务跟踪与本地指导文档（不入库）
+TASK/
+CLAUDE.md
+
 # 系统文件
 .DS_Store
 Thumbs.db
